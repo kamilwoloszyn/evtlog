@@ -298,20 +298,26 @@ type EventLogResult struct {
 // ReadChannelEvents reads up to maxEvents entries from a Windows event log channel.
 // The channel is a channel path, such as: Microsoft-Windows-Kernel-PnP/Configuration.
 func ReadChannelEvents(channelPath string, maxEvents uint32) EventLogResult {
-	return ReadEvents(channelPath, "", maxEvents)
+	return ReadEvents(channelPath, maxEvents)
 }
 
-// ReadEvents reads up to maxEvents entries from a Windows event log channel using an optional
-// Event Log query string such as: *[System[(EventID=7036)]]
-func ReadEvents(channelPath string, eventQuery string, maxEvents uint32) EventLogResult {
+// ReadEvents reads up to maxEvents entries from a Windows event log channel.
+// The optional eventQuery can be omitted, or you can provide a filter such as:
+// *[System[(EventID=7036)]]
+func ReadEvents(channelPath string, maxEvents uint32, eventQuery ...string) EventLogResult {
+	query := ""
+	if len(eventQuery) > 0 {
+		query = eventQuery[0]
+	}
+
 	utf16Path, err := syscall.UTF16PtrFromString(channelPath)
 	if err != nil || utf16Path == nil {
 		return EventLogResult{Error: uint32(C.ERROR_INVALID_PARAMETER)}
 	}
 
 	var utf16Query *uint16
-	if eventQuery != "" {
-		utf16Query, err = syscall.UTF16PtrFromString(eventQuery)
+	if query != "" {
+		utf16Query, err = syscall.UTF16PtrFromString(query)
 		if err != nil || utf16Query == nil {
 			return EventLogResult{Error: uint32(C.ERROR_INVALID_PARAMETER)}
 		}
