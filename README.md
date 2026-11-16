@@ -47,7 +47,8 @@ import (
 )
 
 func main() {
-    result := evtlog.ReadChannelEvents("Microsoft-Windows-Kernel-PnP/Configuration", 10)
+    // Read all available events from a channel
+    result := evtlog.ReadChannelEvents("System", 10)
 
     if result.Error != 0 {
         fmt.Printf("error: %d\n", result.Error)
@@ -55,10 +56,18 @@ func main() {
     }
 
     fmt.Printf("count: %d\n", result.Count)
-
     for i, log := range result.Logs {
         fmt.Printf("Event #%d\n%s\n", i+1, log)
     }
+
+    // Optional: provide an Event Log XML query filter
+    filtered := evtlog.ReadEvents("System", 10, `*[System[(EventID=7036)]]`)
+    if filtered.Error != 0 {
+        fmt.Printf("filtered error: %d\n", filtered.Error)
+        return
+    }
+
+    fmt.Printf("filtered count: %d\n", filtered.Count)
 }
 ```
 
@@ -72,11 +81,26 @@ type EventLogResult struct {
 }
 
 func ReadChannelEvents(channelPath string, maxEvents uint32) EventLogResult
+func ReadEvents(channelPath string, maxEvents uint32, eventQuery ...string) EventLogResult
+```
+
+The `eventQuery` argument is optional and variadic. If you omit it, the library reads the channel without filtering. If you provide it, it is passed to the Windows Event Log XML query engine.
+
+Example:
+
+```go
+// no filter
+evtlog.ReadEvents("System", 10)
+
+// filtered query
+evtlog.ReadEvents("System", 10, `*[System[(EventID=7036)]]`)
 ```
 
 ## Notes
 
 - `ReadChannelEvents` reads up to `maxEvents` entries from the requested channel.
+- `ReadEvents` accepts the same arguments, with an optional XML event query filter as the last parameter.
+- If the query is omitted, the function behaves like `ReadChannelEvents`.
 - The returned logs are XML-formatted event strings from the Windows Event Log API.
 - The library is Windows-only because it uses `winevt.h` and `wevtapi`.
 
